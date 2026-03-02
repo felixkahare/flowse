@@ -1,0 +1,841 @@
+import { useState, useEffect, useRef } from "react";
+
+// ── DESIGN TOKENS ─────────────────────────────────────────────────────────────
+const C = {
+  void: "#04080F",
+  deep: "#070C17",
+  surface: "#0A1120",
+  panel: "#0E1828",
+  card: "#111E30",
+  border: "#182438",
+  borderHi: "#1E2E48",
+  cyan: "#00E8FF",
+  cyanDim: "#00E8FF12",
+  cyanMid: "#00E8FF30",
+  green: "#00E5A0",
+  greenDim: "#00E5A012",
+  amber: "#FFB800",
+  amberDim: "#FFB80012",
+  red: "#FF3D5A",
+  redDim: "#FF3D5A12",
+  violet: "#A78BFA",
+  violetDim: "#A78BFA12",
+  blue: "#3B82F6",
+  blueDim: "#3B82F612",
+  text: "#E8EDF8",
+  textSoft: "#9BAEC8",
+  muted: "#3D5170",
+  soft: "#131F33",
+};
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const USER = {
+  name: "Jordan",
+  avatar: "J",
+  healthScore: 71,
+  healthDelta: +4,
+  monthlyIncome: 5200,
+  monthlySpend: 3940,
+  savingsRate: 0.18,
+  netWorth: 15251.70,
+};
+
+const ACCOUNTS = [
+  { id: 1, name: "Chase Checking", balance: 3842.50, type: "checking", bank: "Chase", last4: "4821", change: +125.40, color: C.cyan },
+  { id: 2, name: "Wells Fargo Savings", balance: 12650.00, type: "savings", bank: "Wells Fargo", last4: "9302", change: +50.00, color: C.green },
+  { id: 3, name: "Amex Credit", balance: -1240.80, type: "credit", bank: "Amex", last4: "3741", change: -340.20, color: C.red },
+];
+
+const TRANSACTIONS = [
+  { id: 1, name: "Netflix", amount: -15.99, date: "Mar 1", category: "Subscription", icon: "📺" },
+  { id: 2, name: "Spotify", amount: -9.99, date: "Mar 1", category: "Subscription", icon: "🎵" },
+  { id: 3, name: "Whole Foods", amount: -87.43, date: "Feb 28", category: "Groceries", icon: "🛒" },
+  { id: 4, name: "Salary Deposit", amount: +3200.00, date: "Feb 28", category: "Income", icon: "💸" },
+  { id: 5, name: "Uber Eats", amount: -87.40, date: "Feb 27", category: "Food", icon: "🍔", anomaly: true },
+  { id: 6, name: "Adobe CC", amount: -54.99, date: "Feb 27", category: "Subscription", icon: "🎨" },
+  { id: 7, name: "Planet Fitness", amount: -24.99, date: "Feb 26", category: "Subscription", icon: "💪" },
+  { id: 8, name: "Amazon", amount: -243.10, date: "Feb 25", category: "Shopping", icon: "📦", anomaly: true },
+];
+
+const SUBSCRIPTIONS = [
+  { id: 1, name: "Netflix", cost: 15.99, icon: "📺", used: true, category: "Entertainment" },
+  { id: 2, name: "Spotify", cost: 9.99, icon: "🎵", used: true, category: "Music" },
+  { id: 3, name: "Adobe CC", cost: 54.99, icon: "🎨", used: false, category: "Work" },
+  { id: 4, name: "Planet Fitness", cost: 24.99, icon: "💪", used: false, category: "Health" },
+  { id: 5, name: "Amazon Prime", cost: 14.99, icon: "📦", used: true, category: "Shopping" },
+  { id: 6, name: "iCloud 2TB", cost: 9.99, icon: "☁️", used: true, category: "Storage" },
+];
+
+const GOALS = [
+  { id: 1, name: "Emergency Fund", target: 10000, current: 6500, emoji: "🛡️", color: C.green, deadline: "Dec 2025" },
+  { id: 2, name: "Japan Trip", target: 3500, current: 1200, emoji: "✈️", color: C.blue, deadline: "Jul 2025" },
+  { id: 3, name: "Pay Off Amex", target: 1240.80, current: 400, emoji: "💳", color: C.amber, deadline: "Jun 2025" },
+];
+
+const BUDGET = [
+  { name: "Housing", budget: 1500, spent: 1500, icon: "🏠", color: C.cyan },
+  { name: "Food & Dining", budget: 600, spent: 621, icon: "🍔", color: C.amber, trend: +34 },
+  { name: "Transport", budget: 300, spent: 187, icon: "🚗", color: C.green, trend: -12 },
+  { name: "Entertainment", budget: 200, spent: 245, icon: "🎬", color: C.red, trend: +22 },
+  { name: "Subscriptions", budget: 150, spent: 131, icon: "📱", color: C.violet, trend: +28 },
+  { name: "Groceries", budget: 400, spent: 312, icon: "🛒", color: C.green, trend: -5 },
+];
+
+const PREDICTIONS = [
+  { id: 1, urgency: "critical", horizon: "In 6 days", icon: "⚡", title: "Cash Flow Shortfall", detail: "Fixed bills ($1,500 rent + $340 car + $131 subs) hit Mar 8–10. Your checking drops to ~$480 with $1,240 Amex due Mar 12.", confidence: 94, action: "Move $800 from savings", impact: "Avoid overdraft risk", actionColor: C.red },
+  { id: 2, urgency: "warning", horizon: "This month", icon: "📈", title: "Dining Trending +34%", detail: "You've averaged $28/day on food vs your $20/day baseline. At this rate you'll overspend your dining budget by $162.", confidence: 81, action: "Set daily food limit", impact: "Save $162", actionColor: C.amber },
+  { id: 3, urgency: "opportunity", horizon: "Next 30 days", icon: "🚀", title: "Goal Acceleration Window", detail: "Light expense month ahead. Moving an extra $300 to your Japan fund hits your target 6 weeks early.", confidence: 88, action: "Boost Japan fund $300", impact: "Goal 6 weeks early", actionColor: C.green },
+  { id: 4, urgency: "warning", horizon: "Next 90 days", icon: "🔄", title: "Subscription Creep", detail: "Your subscription spend has grown 28% in 6 months ($102→$131). Adobe CC and Planet Fitness show near-zero usage. Annual waste: $960.", confidence: 77, action: "Review 2 unused subs", impact: "Save $960/yr", actionColor: C.amber },
+];
+
+const HEALTH_DIMS = [
+  { label: "Savings Rate", score: 78, color: C.green, detail: "18% vs 12% peer avg" },
+  { label: "Debt Load", score: 62, color: C.amber, detail: "$1,241 credit debt" },
+  { label: "Emergency Fund", score: 65, color: C.amber, detail: "3.9 months covered" },
+  { label: "Spend Control", score: 58, color: C.amber, detail: "2 over-budget categories" },
+  { label: "Goal Progress", score: 71, color: C.cyan, detail: "3 active goals on track" },
+  { label: "Cash Flow", score: 84, color: C.green, detail: "Positive most months" },
+];
+
+const SPEND_HISTORY = [
+  { month: "Oct", spend: 3200 }, { month: "Nov", spend: 3890 },
+  { month: "Dec", spend: 4820 }, { month: "Jan", spend: 3540 },
+  { month: "Feb", spend: 3795 }, { month: "Mar★", spend: 3940 },
+];
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+const $$ = (n, d = 2) => {
+  const abs = Math.abs(n);
+  const str = abs.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  return (n < 0 ? "-$" : "$") + str;
+};
+const pct = (a, b) => Math.min(Math.round((a / b) * 100), 100);
+
+// ── MICRO COMPONENTS ──────────────────────────────────────────────────────────
+const Bar = ({ val, max, color, h = 5 }) => (
+  <div style={{ background: C.border, borderRadius: 99, height: h, overflow: "hidden" }}>
+    <div style={{ width: `${pct(val, max)}%`, height: "100%", background: color, borderRadius: 99, transition: "width 1.1s cubic-bezier(.4,0,.2,1)" }} />
+  </div>
+);
+
+const Ring = ({ score, size = 72, sw = 7, color = C.cyan, children }) => {
+  const r = (size - sw) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)", position: "absolute", inset: 0 }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={C.border} strokeWidth={sw} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={sw}
+          strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round"
+          style={{ transition: "stroke-dasharray 1.3s cubic-bezier(.4,0,.2,1)" }} />
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        {children}
+      </div>
+    </div>
+  );
+};
+
+const Pill = ({ children, color = C.cyan }) => (
+  <span style={{ background: color + "20", color, borderRadius: 99, padding: "2px 9px", fontSize: 10, fontWeight: 800, letterSpacing: 0.4, whiteSpace: "nowrap" }}>{children}</span>
+);
+
+const Card = ({ children, style = {}, glow }) => (
+  <div style={{
+    background: C.card, border: `1px solid ${glow ? glow + "40" : C.border}`,
+    borderRadius: 16, padding: 18,
+    boxShadow: glow ? `0 0 24px ${glow}08` : "none",
+    ...style
+  }}>{children}</div>
+);
+
+const SectionLabel = ({ children }) => (
+  <div style={{ fontSize: 10, fontWeight: 800, color: C.muted, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 2 }}>{children}</div>
+);
+
+// Inline sparkline
+const Spark = ({ data, w = 80, h = 28, color = C.cyan }) => {
+  const max = Math.max(...data), min = Math.min(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * (h - 4) - 2}`).join(" ");
+  return (
+    <svg width={w} height={h}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+};
+
+// ── SCREEN: HOME ──────────────────────────────────────────────────────────────
+function HomeScreen() {
+  const totalAssets = ACCOUNTS.filter(a => a.balance > 0).reduce((s, a) => s + a.balance, 0);
+  const totalDebt = Math.abs(ACCOUNTS.filter(a => a.balance < 0).reduce((s, a) => s + a.balance, 0));
+  const netWorth = totalAssets - totalDebt;
+  const criticalPred = PREDICTIONS.find(p => p.urgency === "critical");
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Net Worth Hero */}
+      <Card style={{ background: "linear-gradient(145deg, #0C1A2E 0%, #081020 100%)", border: "1px solid #1A2E4A" }} glow={C.cyan}>
+        <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6 }}>Total Net Worth</div>
+        <div style={{ fontSize: 40, fontWeight: 900, color: C.text, letterSpacing: -1.5, lineHeight: 1, fontFamily: "'Georgia', serif" }}>
+          {$$(netWorth, 0)}
+        </div>
+        <div style={{ display: "flex", gap: 4, alignItems: "center", marginTop: 6 }}>
+          <span style={{ fontSize: 11, color: C.green, fontWeight: 700 }}>▲ $175 this month</span>
+        </div>
+        <div style={{ height: 1, background: C.border, margin: "14px 0" }} />
+        <div style={{ display: "flex", gap: 0 }}>
+          {[["Assets", totalAssets, C.green], ["Debt", totalDebt, C.red], ["Saved/mo", USER.monthlyIncome - USER.monthlySpend, C.cyan]].map(([label, val, col], i) => (
+            <div key={label} style={{ flex: 1, borderRight: i < 2 ? `1px solid ${C.border}` : "none", paddingRight: i < 2 ? 12 : 0, paddingLeft: i > 0 ? 12 : 0 }}>
+              <div style={{ fontSize: 10, color: C.muted }}>{label}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: col, marginTop: 2 }}>{$$(val, 0)}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Critical Prediction Alert */}
+      {criticalPred && (
+        <Card style={{ background: C.redDim, border: `1px solid ${C.red}35` }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div style={{ fontSize: 20 }}>⚡</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: C.red }}>CRITICAL PREDICTION</div>
+                <Pill color={C.red}>{criticalPred.horizon}</Pill>
+              </div>
+              <div style={{ fontSize: 13, color: C.text, fontWeight: 600, marginTop: 3 }}>{criticalPred.title}</div>
+              <div style={{ fontSize: 12, color: C.textSoft, marginTop: 4, lineHeight: 1.5 }}>{criticalPred.detail}</div>
+              <button style={{ marginTop: 10, padding: "7px 14px", background: C.red + "25", color: C.red, border: `1px solid ${C.red}40`, borderRadius: 8, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                {criticalPred.action} →
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Health Score mini */}
+      <Card>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <Ring score={USER.healthScore} size={64} sw={6} color={C.amber}>
+            <div style={{ fontSize: 16, fontWeight: 900, color: C.amber, lineHeight: 1 }}>{USER.healthScore}</div>
+          </Ring>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>Financial Health</div>
+            <div style={{ fontSize: 11, color: C.textSoft, marginTop: 2 }}>Fair · Better than 64% of peers</div>
+            <div style={{ marginTop: 8 }}><Bar val={USER.healthScore} max={100} color={C.amber} h={4} /></div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 11, color: C.green, fontWeight: 700 }}>+{USER.healthDelta} pts</div>
+            <div style={{ fontSize: 10, color: C.muted }}>this month</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Accounts Preview */}
+      <SectionLabel>Accounts</SectionLabel>
+      {ACCOUNTS.map(acc => (
+        <div key={acc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: C.card, border: `1px solid ${C.border}`, borderRadius: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: 99, background: acc.color }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{acc.name}</div>
+              <div style={{ fontSize: 10, color: C.muted }}>····{acc.last4}</div>
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: acc.balance < 0 ? C.red : C.text }}>{$$(acc.balance)}</div>
+            <div style={{ fontSize: 10, color: acc.change > 0 ? C.green : C.red }}>{acc.change > 0 ? "▲" : "▼"} {$$(Math.abs(acc.change))}</div>
+          </div>
+        </div>
+      ))}
+
+      {/* Budget preview */}
+      <SectionLabel>Budget · March</SectionLabel>
+      {BUDGET.slice(0, 4).map(cat => (
+        <div key={cat.name} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 12, color: C.textSoft }}>{cat.icon} {cat.name}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: cat.spent > cat.budget ? C.red : C.text }}>
+              {$$(cat.spent)} <span style={{ color: C.muted, fontWeight: 400 }}>/ {$$(cat.budget)}</span>
+            </div>
+          </div>
+          <Bar val={cat.spent} max={cat.budget} color={cat.spent > cat.budget ? C.red : cat.color} />
+        </div>
+      ))}
+
+      {/* Recent Transactions */}
+      <SectionLabel>Recent Transactions</SectionLabel>
+      {TRANSACTIONS.slice(0, 5).map(tx => (
+        <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 38, height: 38, background: tx.anomaly ? C.redDim : C.soft, border: tx.anomaly ? `1px solid ${C.red}30` : "none", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>{tx.icon}</div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{tx.name}</div>
+                {tx.anomaly && <Pill color={C.red}>Unusual</Pill>}
+              </div>
+              <div style={{ fontSize: 10, color: C.muted }}>{tx.date} · {tx.category}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: tx.amount > 0 ? C.green : C.text }}>{$$(tx.amount)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── SCREEN: ACCOUNTS ──────────────────────────────────────────────────────────
+function AccountsScreen() {
+  const [selected, setSelected] = useState(null);
+  const totalAssets = ACCOUNTS.filter(a => a.balance > 0).reduce((s, a) => s + a.balance, 0);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Card style={{ background: "linear-gradient(145deg, #0C1A2E, #081020)", border: "1px solid #1A2E4A" }}>
+        <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.2 }}>Total Across {ACCOUNTS.length} Accounts</div>
+        <div style={{ fontSize: 34, fontWeight: 900, color: C.text, letterSpacing: -1, marginTop: 4, fontFamily: "Georgia, serif" }}>{$$(totalAssets)}</div>
+        <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+          {ACCOUNTS.map(a => (
+            <div key={a.id} style={{ flex: 1, height: 4, borderRadius: 99, background: a.color, opacity: a.balance > 0 ? 0.9 : 0.4 }} />
+          ))}
+        </div>
+      </Card>
+
+      {ACCOUNTS.map(acc => (
+        <Card key={acc.id} style={{ border: `1px solid ${selected === acc.id ? acc.color + "50" : C.border}`, cursor: "pointer", transition: "border-color 0.2s" }}
+          onClick={() => setSelected(selected === acc.id ? null : acc.id)}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 14, background: acc.color + "18", border: `1px solid ${acc.color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                {acc.type === "checking" ? "🏦" : acc.type === "savings" ? "💰" : "💳"}
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{acc.name}</div>
+                <div style={{ fontSize: 11, color: C.muted }}>····{acc.last4} · {acc.type}</div>
+              </div>
+            </div>
+            <Pill color={acc.type === "credit" ? C.red : acc.color}>{acc.type}</Pill>
+          </div>
+          <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: acc.balance < 0 ? C.red : C.text, fontFamily: "Georgia, serif", letterSpacing: -0.5 }}>
+              {$$(acc.balance)}
+            </div>
+            <div style={{ fontSize: 12, color: acc.change > 0 ? C.green : C.red, fontWeight: 700 }}>
+              {acc.change > 0 ? "▲" : "▼"} {$$(Math.abs(acc.change))} mo
+            </div>
+          </div>
+
+          {selected === acc.id && (
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}`, animation: "fadeUp 0.25s ease" }}>
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>Recent Activity</div>
+              {TRANSACTIONS.filter((_, i) => i < 3).map(tx => (
+                <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 12, color: C.textSoft }}>{tx.icon} {tx.name}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: tx.amount > 0 ? C.green : C.text }}>{$$(tx.amount)}</div>
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button style={{ flex: 1, padding: "9px 0", background: acc.color + "18", color: acc.color, border: "none", borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>All Transactions</button>
+                <button style={{ flex: 1, padding: "9px 0", background: C.soft, color: C.text, border: "none", borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>Account Details</button>
+              </div>
+            </div>
+          )}
+        </Card>
+      ))}
+
+      <button style={{ padding: "15px", background: "transparent", color: C.cyan, border: `1.5px dashed ${C.cyan}40`, borderRadius: 16, fontSize: 13, fontWeight: 800, cursor: "pointer", letterSpacing: 0.3 }}>
+        + Connect New Account
+      </button>
+    </div>
+  );
+}
+
+// ── SCREEN: BUDGET ────────────────────────────────────────────────────────────
+function BudgetScreen() {
+  const totalBudget = BUDGET.reduce((s, c) => s + c.budget, 0);
+  const totalSpent = BUDGET.reduce((s, c) => s + c.spent, 0);
+  const remaining = totalBudget - totalSpent;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Card style={{ background: "linear-gradient(145deg, #0C1A2E, #081020)", border: "1px solid #1A2E4A" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.2 }}>March 2025</div>
+            <div style={{ fontSize: 32, fontWeight: 900, color: C.text, letterSpacing: -1, marginTop: 4, fontFamily: "Georgia, serif" }}>{$$(totalSpent)}</div>
+            <div style={{ fontSize: 12, color: C.textSoft, marginTop: 2 }}>of {$$(totalBudget)} budget</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 10, color: C.muted }}>Remaining</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: remaining > 0 ? C.green : C.red }}>{$$(remaining)}</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 16 }}><Bar val={totalSpent} max={totalBudget} color={totalSpent > totalBudget ? C.red : C.cyan} h={8} /></div>
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>{pct(totalSpent, totalBudget)}% used · {Math.round((1 - totalSpent / totalBudget) * 100)}% remaining</div>
+      </Card>
+
+      {BUDGET.map((cat, i) => (
+        <Card key={cat.name} style={{ animation: `fadeUp 0.35s ease ${i * 0.06}s both` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 40, height: 40, background: cat.color + "15", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{cat.icon}</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{cat.name}</div>
+                {cat.trend && <div style={{ fontSize: 10, color: cat.trend > 0 ? C.red : C.green, fontWeight: 700 }}>{cat.trend > 0 ? "▲" : "▼"} {Math.abs(cat.trend)}% vs last month</div>}
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 15, fontWeight: 900, color: cat.spent > cat.budget ? C.red : C.text }}>{$$(cat.spent)}</div>
+              <div style={{ fontSize: 10, color: C.muted }}>/ {$$(cat.budget)}</div>
+            </div>
+          </div>
+          <Bar val={cat.spent} max={cat.budget} color={cat.spent > cat.budget ? C.red : cat.color} h={6} />
+          {cat.spent > cat.budget && (
+            <div style={{ marginTop: 8, fontSize: 11, color: C.red, fontWeight: 700 }}>⚠ Over by {$$(cat.spent - cat.budget)}</div>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── SCREEN: GOALS ─────────────────────────────────────────────────────────────
+function GoalsScreen() {
+  const totalSaved = GOALS.reduce((s, g) => s + g.current, 0);
+  const totalTarget = GOALS.reduce((s, g) => s + g.target, 0);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Card style={{ background: "linear-gradient(145deg, #0C1A2E, #081020)", border: "1px solid #1A2E4A" }}>
+        <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.2 }}>All Goals Combined</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 8 }}>
+          <Ring score={pct(totalSaved, totalTarget)} size={72} sw={7} color={C.green}>
+            <div style={{ fontSize: 14, fontWeight: 900, color: C.green }}>{pct(totalSaved, totalTarget)}%</div>
+          </Ring>
+          <div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: C.text, fontFamily: "Georgia, serif", letterSpacing: -0.5 }}>{$$(totalSaved)}</div>
+            <div style={{ fontSize: 12, color: C.textSoft }}>of {$$(totalTarget)} total target</div>
+            <div style={{ fontSize: 11, color: C.green, marginTop: 4, fontWeight: 700 }}>On track with 3 active goals</div>
+          </div>
+        </div>
+      </Card>
+
+      {GOALS.map((goal, i) => {
+        const p = pct(goal.current, goal.target);
+        const rem = goal.target - goal.current;
+        return (
+          <Card key={goal.id} glow={goal.color} style={{ animation: `fadeUp 0.35s ease ${i * 0.1}s both` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <div style={{ width: 46, height: 46, background: goal.color + "18", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{goal.emoji}</div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{goal.name}</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>Target: {goal.deadline}</div>
+                </div>
+              </div>
+              <Pill color={goal.color}>{p}%</Pill>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: C.text, fontFamily: "Georgia, serif" }}>{$$(goal.current)}</div>
+                <div style={{ fontSize: 13, color: C.muted }}>of {$$(goal.target)}</div>
+              </div>
+              <Bar val={goal.current} max={goal.target} color={goal.color} h={8} />
+              <div style={{ fontSize: 11, color: C.textSoft, marginTop: 6 }}>{$$(rem)} remaining</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <button style={{ flex: 1, padding: "9px 0", background: goal.color + "18", color: goal.color, border: "none", borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>+ Add Funds</button>
+              <button style={{ padding: "9px 16px", background: C.soft, color: C.textSoft, border: "none", borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Edit</button>
+            </div>
+          </Card>
+        );
+      })}
+
+      <button style={{ padding: "15px", background: "transparent", color: C.green, border: `1.5px dashed ${C.green}40`, borderRadius: 16, fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+        + New Goal
+      </button>
+    </div>
+  );
+}
+
+// ── SCREEN: SUBSCRIPTIONS ─────────────────────────────────────────────────────
+function SubsScreen() {
+  const [subs, setSubs] = useState(SUBSCRIPTIONS);
+  const total = subs.reduce((s, x) => s + x.cost, 0);
+  const unusedCost = subs.filter(x => !x.used).reduce((s, x) => s + x.cost, 0);
+
+  const cancel = (id) => setSubs(prev => prev.filter(s => s.id !== id));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Card style={{ background: "linear-gradient(145deg, #0C1A2E, #081020)", border: "1px solid #1A2E4A" }}>
+        <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.2 }}>Monthly Subscriptions</div>
+        <div style={{ fontSize: 34, fontWeight: 900, color: C.text, letterSpacing: -1, marginTop: 4, fontFamily: "Georgia, serif" }}>{$$(total)}<span style={{ fontSize: 14, color: C.muted, fontWeight: 400 }}>/mo</span></div>
+        <div style={{ fontSize: 12, color: C.muted }}>{$$(total * 12)}/year total</div>
+        {unusedCost > 0 && (
+          <div style={{ marginTop: 12, padding: "10px 12px", background: C.redDim, border: `1px solid ${C.red}25`, borderRadius: 10 }}>
+            <div style={{ fontSize: 12, color: C.red, fontWeight: 800 }}>⚠ {$$(unusedCost)}/mo on unused subs · Save {$$(unusedCost * 12)}/yr</div>
+          </div>
+        )}
+      </Card>
+
+      <SectionLabel>Active Subscriptions</SectionLabel>
+      {subs.map((sub, i) => (
+        <Card key={sub.id} style={{ border: `1px solid ${!sub.used ? C.red + "30" : C.border}`, animation: `fadeUp 0.3s ease ${i * 0.05}s both` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 44, height: 44, background: C.soft, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{sub.icon}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{sub.name}</div>
+                {!sub.used && <Pill color={C.red}>Unused</Pill>}
+              </div>
+              <div style={{ fontSize: 11, color: C.muted }}>{sub.category} · Monthly</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: C.text }}>{$$(sub.cost)}</div>
+              <div style={{ fontSize: 10, color: C.muted }}>per month</div>
+            </div>
+          </div>
+          {!sub.used && (
+            <button onClick={() => cancel(sub.id)} style={{ marginTop: 12, width: "100%", padding: "9px 0", background: C.redDim, color: C.red, border: `1px solid ${C.red}30`, borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+              Cancel & Save {$$(sub.cost)}/mo
+            </button>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── SCREEN: INTELLIGENCE ENGINE ───────────────────────────────────────────────
+function IntelScreen() {
+  const [tab, setTab] = useState("predict");
+  const [chatMsgs, setChatMsgs] = useState([
+    { role: "assistant", text: "Intelligence Engine online. I've analyzed 847 transactions across 6 months and 3 accounts. I'm detecting a cash flow risk in 6 days and 2 subscription drains. What would you like to explore?" }
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+  const bottomRef = useRef(null);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMsgs]);
+
+  const sendChat = async (text) => {
+    if (!text.trim() || loading) return;
+    const userMsg = { role: "user", text };
+    setChatMsgs(p => [...p, userMsg]);
+    setInput("");
+    setLoading(true);
+    const sys = `You are Flowse's predictive financial intelligence engine — sharp, data-driven, human. User data: Net worth $15,251 (checking $3,842, savings $12,650, Amex -$1,241). Income $5,200/mo, spend $3,940/mo, savings rate 18%. Cash shortfall predicted in 6 days. Dining up 34%. Subscription creep ($131/mo, Adobe CC and Planet Fitness unused). Goals: Emergency Fund 65%, Japan trip 34%, Pay Off Amex 32%. Health score 71/100, better than 64% of peers. Answer in max 3 sharp sentences. Reference their actual numbers. Sound like a Bloomberg terminal meets a trusted financial advisor.`;
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, system: sys, messages: [...chatMsgs, userMsg].map(m => ({ role: m.role, content: m.text })) })
+      });
+      const data = await res.json();
+      setChatMsgs(p => [...p, { role: "assistant", text: data.content?.[0]?.text || "Processing error." }]);
+    } catch { setChatMsgs(p => [...p, { role: "assistant", text: "Connection error. Retry." }]); }
+    setLoading(false);
+  };
+
+  const urgColors = { critical: C.red, warning: C.amber, opportunity: C.green };
+
+  const intelTabs = [
+    { id: "predict", label: "Predict", icon: "⚡" },
+    { id: "health", label: "Health", icon: "◎" },
+    { id: "patterns", label: "Patterns", icon: "≈" },
+    { id: "chat", label: "AI Coach", icon: "◈" },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {/* Intel Header */}
+      <div style={{ background: "linear-gradient(145deg, #0A1628, #060E1C)", padding: "14px 0 0", borderRadius: 16, marginBottom: 14, border: `1px solid ${C.cyan}25`, overflow: "hidden" }}>
+        <div style={{ padding: "0 16px 14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: 11, color: C.cyan, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}>◈ Flowse Intelligence</div>
+              <div style={{ fontSize: 17, fontWeight: 900, color: C.text, marginTop: 2, letterSpacing: -0.3 }}>Predictive Engine</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 10, color: C.muted }}>847 transactions</div>
+              <div style={{ fontSize: 10, color: C.green, fontWeight: 700 }}>● Live · 2min ago</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <div style={{ flex: 1, padding: "8px 10px", background: C.redDim, border: `1px solid ${C.red}25`, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: C.red }}>1</div>
+              <div style={{ fontSize: 9, color: C.muted, fontWeight: 700 }}>CRITICAL</div>
+            </div>
+            <div style={{ flex: 1, padding: "8px 10px", background: C.amberDim, border: `1px solid ${C.amber}25`, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: C.amber }}>2</div>
+              <div style={{ fontSize: 9, color: C.muted, fontWeight: 700 }}>WARNINGS</div>
+            </div>
+            <div style={{ flex: 1, padding: "8px 10px", background: C.greenDim, border: `1px solid ${C.green}25`, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: C.green }}>1</div>
+              <div style={{ fontSize: 9, color: C.muted, fontWeight: 700 }}>OPPORTUNITY</div>
+            </div>
+            <div style={{ flex: 1, padding: "8px 10px", background: C.redDim, border: `1px solid ${C.red}25`, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: C.red }}>2</div>
+              <div style={{ fontSize: 9, color: C.muted, fontWeight: 700 }}>ANOMALIES</div>
+            </div>
+          </div>
+        </div>
+        {/* Sub-tabs */}
+        <div style={{ display: "flex", borderTop: `1px solid ${C.border}` }}>
+          {intelTabs.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              flex: 1, padding: "10px 4px 10px", background: "none", border: "none",
+              borderBottom: `2px solid ${tab === t.id ? C.cyan : "transparent"}`,
+              color: tab === t.id ? C.cyan : C.muted, cursor: "pointer",
+              fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5,
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 3, transition: "all 0.2s"
+            }}>
+              <span style={{ fontSize: 14 }}>{t.icon}</span>{t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* PREDICT tab */}
+      {tab === "predict" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {PREDICTIONS.map((p, i) => {
+            const col = urgColors[p.urgency];
+            const isOpen = expanded === p.id;
+            return (
+              <div key={p.id} onClick={() => setExpanded(isOpen ? null : p.id)}
+                style={{ background: C.card, border: `1px solid ${col}35`, borderLeft: `3px solid ${col}`, borderRadius: 14, padding: 14, cursor: "pointer", animation: `fadeUp 0.35s ease ${i * 0.08}s both`, transition: "border-color 0.2s" }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{ fontSize: 20 }}>{p.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: C.text }}>{p.title}</div>
+                      <Pill color={col}>{p.horizon}</Pill>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                      <div style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>Confidence</div>
+                      <Bar val={p.confidence} max={100} color={col} h={3} />
+                      <div style={{ fontSize: 11, color: col, fontWeight: 800, flexShrink: 0 }}>{p.confidence}%</div>
+                    </div>
+                  </div>
+                </div>
+                {isOpen && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, animation: "fadeUp 0.2s ease" }}>
+                    <div style={{ fontSize: 12, color: C.textSoft, lineHeight: 1.6, marginBottom: 12 }}>{p.detail}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button style={{ flex: 1, padding: "9px 0", background: col + "20", color: col, border: `1px solid ${col}35`, borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>{p.action} →</button>
+                      <div style={{ padding: "9px 12px", background: C.soft, borderRadius: 10, fontSize: 11, color: C.textSoft, fontWeight: 700 }}>{p.impact}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* HEALTH tab */}
+      {tab === "health" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Card>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <Ring score={USER.healthScore} size={84} sw={8} color={C.amber}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: C.amber }}>{USER.healthScore}</div>
+                <div style={{ fontSize: 8, color: C.muted, fontWeight: 700 }}>/100</div>
+              </Ring>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: C.text }}>Financial Health</div>
+                <div style={{ fontSize: 12, color: C.amber, fontWeight: 700 }}>Fair · +{USER.healthDelta} pts this month</div>
+                <div style={{ fontSize: 12, color: C.textSoft, marginTop: 4 }}>Better than <strong style={{ color: C.text }}>64%</strong> of your peers</div>
+              </div>
+            </div>
+            <div style={{ marginTop: 16, padding: 12, background: C.surface, borderRadius: 12 }}>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>vs. Peer Average</div>
+              <div style={{ display: "flex", gap: 0 }}>
+                {[["Savings", "18%", "12%", C.green], ["Net Worth", "$15K", "$11K", C.cyan], ["Spend Ratio", "76%", "82%", C.amber]].map(([l, v, peer, col], i) => (
+                  <div key={l} style={{ flex: 1, borderRight: i < 2 ? `1px solid ${C.border}` : "none", paddingRight: i < 2 ? 10 : 0, paddingLeft: i > 0 ? 10 : 0 }}>
+                    <div style={{ fontSize: 9, color: C.muted }}>{l}</div>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: col }}>{v}</div>
+                    <div style={{ fontSize: 9, color: C.muted }}>avg {peer}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+          {HEALTH_DIMS.map(dim => (
+            <div key={dim.label} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 108, fontSize: 12, color: C.textSoft, flexShrink: 0 }}>{dim.label}</div>
+              <div style={{ flex: 1 }}><Bar val={dim.score} max={100} color={dim.color} h={6} /></div>
+              <div style={{ width: 28, fontSize: 12, fontWeight: 900, color: dim.color, textAlign: "right" }}>{dim.score}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* PATTERNS tab */}
+      {tab === "patterns" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Card>
+            <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>6-Month Spend History</div>
+            <div style={{ fontSize: 11, color: C.textSoft, marginBottom: 14 }}>Income: $5,200/mo · Avg spend: {$$(SPEND_HISTORY.reduce((s, d) => s + d.spend, 0) / SPEND_HISTORY.length, 0)}/mo</div>
+            <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 70 }}>
+              {SPEND_HISTORY.map((d, i) => {
+                const maxSpend = Math.max(...SPEND_HISTORY.map(x => x.spend));
+                const h = (d.spend / maxSpend) * 60;
+                const isCurrent = i === SPEND_HISTORY.length - 1;
+                return (
+                  <div key={d.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <div style={{ fontSize: 8, color: d.spend > 4000 ? C.red : C.muted, fontWeight: 700 }}>{$$(d.spend, 0)}</div>
+                    <div style={{ width: "100%", height: h, background: isCurrent ? C.cyan : d.spend > 4000 ? C.red : C.border, borderRadius: "4px 4px 0 0", opacity: isCurrent ? 1 : 0.7, transition: "height 1s ease" }} />
+                    <div style={{ fontSize: 8, color: isCurrent ? C.cyan : C.muted, fontWeight: isCurrent ? 800 : 400 }}>{d.month}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+          {BUDGET.map(cat => (
+            <div key={cat.name} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>{cat.icon}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{cat.name}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {cat.trend && <div style={{ fontSize: 11, color: cat.trend > 0 ? C.red : C.green, fontWeight: 800 }}>{cat.trend > 0 ? "▲" : "▼"}{Math.abs(cat.trend)}%</div>}
+                  <div style={{ fontSize: 13, fontWeight: 900, color: cat.spent > cat.budget ? C.red : C.text }}>{$$(cat.spent)}</div>
+                </div>
+              </div>
+              <Bar val={cat.spent} max={cat.budget} color={cat.spent > cat.budget ? C.red : cat.color} h={5} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* AI CHAT tab */}
+      {tab === "chat" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 14, minHeight: 260, maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+            {chatMsgs.map((msg, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                <div style={{
+                  maxWidth: "88%", padding: "10px 14px",
+                  borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                  background: msg.role === "user" ? C.cyan : C.surface,
+                  color: msg.role === "user" ? "#000" : C.text,
+                  fontSize: msg.role === "assistant" ? 12 : 13,
+                  fontFamily: msg.role === "assistant" ? "monospace" : "inherit",
+                  lineHeight: 1.6, fontWeight: msg.role === "user" ? 700 : 400,
+                }}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div style={{ display: "flex" }}>
+                <div style={{ padding: "10px 14px", background: C.surface, borderRadius: "16px 16px 16px 4px", fontSize: 12, color: C.cyan, fontFamily: "monospace" }}>Analyzing data...</div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {["Why will I run low on cash?", "Am I saving enough?", "What's my biggest risk?", "How to hit goals faster?"].map(p => (
+              <button key={p} onClick={() => sendChat(p)} style={{ padding: "5px 11px", background: C.surface, color: C.textSoft, border: `1px solid ${C.border}`, borderRadius: 99, fontSize: 11, cursor: "pointer" }}>{p}</button>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && sendChat(input)}
+              placeholder="Ask the intelligence engine..."
+              style={{ flex: 1, padding: "12px 14px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text, fontSize: 13, outline: "none", fontFamily: "monospace" }} />
+            <button onClick={() => sendChat(input)} style={{ padding: "12px 18px", background: C.cyan, color: "#000", border: "none", borderRadius: 12, fontWeight: 900, fontSize: 14, cursor: "pointer" }}>▶</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
+const NAV = [
+  { id: "home", label: "Home", icon: "⊞" },
+  { id: "accounts", label: "Accounts", icon: "🏦" },
+  { id: "budget", label: "Budget", icon: "◫" },
+  { id: "goals", label: "Goals", icon: "◎" },
+  { id: "subs", label: "Subs", icon: "↻" },
+  { id: "intel", label: "Intel", icon: "◈" },
+];
+
+export default function Flowse() {
+  const [screen, setScreen] = useState("home");
+
+  const screens = {
+    home: <HomeScreen />,
+    accounts: <AccountsScreen />,
+    budget: <BudgetScreen />,
+    goals: <GoalsScreen />,
+    subs: <SubsScreen />,
+    intel: <IntelScreen />,
+  };
+
+  return (
+    <div style={{ background: C.void, minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif", color: C.text, maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", position: "relative" }}>
+      <style>{`
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        ::-webkit-scrollbar { width: 0; height: 0; }
+        input::placeholder { color: #3D5170; }
+        button { font-family: inherit; }
+      `}</style>
+
+      {/* Top Header */}
+      <div style={{ background: C.deep, borderBottom: `1px solid ${C.border}`, padding: "16px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 50 }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: -0.8, lineHeight: 1 }}>
+            <span style={{ color: C.cyan }}>Flow</span><span style={{ color: C.text }}>se</span>
+          </div>
+          <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Mon, Mar 2 · Good morning 👋</div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Notification dot */}
+          <div style={{ position: "relative" }}>
+            <div style={{ width: 34, height: 34, background: C.soft, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, cursor: "pointer" }}>🔔</div>
+            <div style={{ position: "absolute", top: 6, right: 6, width: 7, height: 7, background: C.red, borderRadius: 99, border: `2px solid ${C.deep}` }} />
+          </div>
+          <div style={{ width: 36, height: 36, background: `linear-gradient(135deg, ${C.cyan}, ${C.blue})`, borderRadius: 99, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 900, color: "#000", cursor: "pointer" }}>
+            {USER.avatar}
+          </div>
+        </div>
+      </div>
+
+      {/* Screen Content */}
+      <div key={screen} style={{ flex: 1, overflowY: "auto", padding: "16px 16px 96px" }}>
+        {screens[screen]}
+      </div>
+
+      {/* Bottom Nav */}
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: C.deep + "F5", backdropFilter: "blur(24px)", borderTop: `1px solid ${C.border}`, padding: "8px 4px 18px", display: "flex", zIndex: 100 }}>
+        {NAV.map(item => {
+          const active = screen === item.id;
+          return (
+            <button key={item.id} onClick={() => setScreen(item.id)} style={{
+              flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+              background: "none", border: "none", cursor: "pointer", padding: "6px 0",
+              position: "relative"
+            }}>
+              {active && (
+                <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 20, height: 2, background: C.cyan, borderRadius: 99 }} />
+              )}
+              <span style={{ fontSize: item.id === "intel" ? 17 : 18, filter: active ? "none" : "grayscale(1) opacity(0.4)", transition: "all 0.2s" }}>{item.icon}</span>
+              <span style={{ fontSize: 9, fontWeight: 800, color: active ? C.cyan : C.muted, letterSpacing: 0.3, transition: "color 0.2s" }}>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
