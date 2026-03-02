@@ -1,2 +1,0 @@
-# flowse
-A budjeting app
